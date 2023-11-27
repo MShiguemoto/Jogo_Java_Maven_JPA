@@ -1,9 +1,11 @@
 package ifpr.paranavai.jogo.modelo;
 
+import javax.persistence.Entity;
 import javax.swing.ImageIcon;
 
 import ifpr.paranavai.jogo.principal.Principal;
 
+@Entity
 public class Asteroide extends ElementoGrafico {
     private static int VELOCIDADE = 1;
 

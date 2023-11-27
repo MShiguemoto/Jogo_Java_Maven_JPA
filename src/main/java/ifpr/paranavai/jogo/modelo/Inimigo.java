@@ -1,7 +1,9 @@
 package ifpr.paranavai.jogo.modelo;
 
+import javax.persistence.Entity;
 import javax.swing.ImageIcon;
 
+@Entity
 public class Inimigo extends ElementoGrafico {
     private static int VELOCIDADE = 2;
 

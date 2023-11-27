@@ -6,13 +6,20 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.List;
 
+import javax.persistence.Entity;
 import javax.swing.ImageIcon;
 import javax.swing.Timer;
 
+import org.hibernate.Session;
+
+import ifpr.paranavai.jogo.conexao.HibernateUtil;
 import ifpr.paranavai.jogo.principal.Principal;
 
+@Entity
 public class FaseUm extends Fase {
+
     private static final int DELAY = 5;
     private static final int QTDE_DE_INIMIGOS = 40;
     private static final int QTDE_DE_ASTEROIDES = 50;
@@ -29,10 +36,10 @@ public class FaseUm extends Fase {
         this.inicializaElementosGraficosAdicionais();
 
         this.inicializaInimigos();
-
-        this.timer = new Timer(DELAY, this); // + Criação do objeto Timer
-        this.timer.start(); // + Iniciando o nosso jogo
-
+  
+         this.timer = new Timer(DELAY, this); // + Criação do objeto Timer
+         this.timer.start(); // + Iniciando o nosso jogo
+        // this.timer.setDelay(1);
     }
 
     @Override
@@ -48,7 +55,52 @@ public class FaseUm extends Fase {
     }
 
     @Override
-    public void paint(Graphics g) {
+    public void keyPressed(KeyEvent e) {
+        //Troquei para switch -> implementando o "Pause" 
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_SPACE:
+                personagem.atirar();
+                break;
+            case KeyEvent.VK_ENTER:
+                personagem.atirarSuper();
+                break;
+            case KeyEvent.VK_ESCAPE:
+                if (timer.isRunning()) {
+                    timer.stop();
+                } else {
+                    timer.start();
+                }
+                break;
+
+                case KeyEvent.VK_1:
+                    emJogo = true;
+                    personagem = new Personagem();
+                    inicializaElementosGraficosAdicionais();
+                    inicializaInimigos();
+                    timer.start();
+                break;
+
+                case KeyEvent.VK_L:
+                    HibernateUtil.SalvarObjeto(personagem);
+                break;
+            default:
+                personagem.mover(e);
+                break;
+        }
+        // if (e.getKeyCode() == KeyEvent.VK_SPACE)
+        //     personagem.atirar();
+        // else
+        //     personagem.mover(e);
+
+    }
+
+    // @Override
+    // public void paint(Graphics g){
+    //     super.paint(g);
+    // }
+
+    @Override
+    public void paint (Graphics g){
         Graphics2D graficos = (Graphics2D) g;
         if (emJogo) {
             graficos.drawImage(fundo, 0, 0, null);
@@ -63,7 +115,7 @@ public class FaseUm extends Fase {
 
             // Recuperar a nossa lista de tiros (getTiros) e atribuímos para uma variável
             // local chamada tiros.
-            ArrayList<Tiro> tiros = personagem.getTiros();
+            List<Tiro> tiros = personagem.getTiros();
 
             // Criando um laço de repetição (foreach). Iremos percorrer toda a lista.
             for (Tiro tiro : tiros) {
@@ -71,27 +123,27 @@ public class FaseUm extends Fase {
                 graficos.drawImage(tiro.getImagem(), tiro.getPosicaoEmX(), tiro.getPosicaoEmY(), this);
             }
 
+            //Criei com if para possibilitar apenas um superTiro por vez
+            if (personagem.getTiroSuper() != null) {
+                TiroSuper tiroSuper = personagem.getTiroSuper();
+                graficos.drawImage(tiroSuper.getImagem(),tiroSuper.getPosicaoEmX(), tiroSuper.getPosicaoEmY(), this);
+            }
+
             // Criando um laço de repetição (foreach). Iremos percorrer toda a lista.
             for (Inimigo inimigo : inimigos) {
                 // Desenhar o inimigo na nossa tela.
                 graficos.drawImage(inimigo.getImagem(), inimigo.getPosicaoEmX(), inimigo.getPosicaoEmY(), this);
             }
-            super.desenhaPontuacao(graficos);
+            desenhaPontuacao(graficos);
+            desenhaVidas(graficos);
+            desenhaHitBox(graficos);
         } else {
             ImageIcon fimDeJogo = new ImageIcon(getClass().getResource("/fimdejogo.jpg"));
             graficos.drawImage(fimDeJogo.getImage(), 0, 0, this);
         }
         g.dispose();
     }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_SPACE)
-            personagem.atirar();
-        else
-            personagem.mover(e);
-    }
-
+  
     @Override
     public void keyReleased(KeyEvent e) {
         personagem.parar(e);
@@ -99,6 +151,7 @@ public class FaseUm extends Fase {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        
         personagem.atualizar();
 
         // Criando um laço de repetição (foreach). Iremos percorrer toda a lista.
@@ -108,7 +161,7 @@ public class FaseUm extends Fase {
 
         // Recuperar a nossa lista de tiros (getTiros) e atribuímos para uma variável
         // local chamada tiros.
-        ArrayList<Tiro> tiros = personagem.getTiros();
+        List<Tiro> tiros = personagem.getTiros();
 
         // Criando um laço de repetição (for). Iremos percorrer toda a lista.
         for (int i = 0; i < tiros.size(); i++) {
@@ -123,6 +176,12 @@ public class FaseUm extends Fase {
                 // Atualizar a posição do tiro.
                 tiro.atualizar();
         }
+
+        if (personagem.getTiroSuper() != null) {
+                TiroSuper tiroSuper = personagem.getTiroSuper();
+                tiroSuper.atualizar();
+
+            }
 
         // Criando um laço de repetição (for). Iremos percorrer toda a lista.
         for (int i = 0; i < this.inimigos.size(); i++) {
@@ -141,27 +200,43 @@ public class FaseUm extends Fase {
         repaint();
     }
 
-    @Override
-    public void verificarColisoes() {
-        Rectangle formaPersonagem = this.personagem.getRectangle();
+    public void verificarColisoes() {   
+        //O retangulo retornado pela função da classe ElementoGráfico tá gerando uma hitbox ridícula
+        //muito maior que a nave visível. Confira mais habilitando a linha 82 (método super.desenhaHitBox()) 
+        // e habilitando também o formaPersonagem direto do personagem.getRectangle() (LOGO ABAIXO)
+        //Rectangle formaPersonagem = this.personagem.getRectangle(); 
+
+        Rectangle formaPersonagem = new Rectangle(personagem.getPosicaoEmX(), personagem.getPosicaoEmY(), personagem.getLarguraImagem(), personagem.getAlturaImagem());
+        
+        TiroSuper tiroSuper = this.personagem.getTiroSuper();
 
         for (int i = 0; i < this.inimigos.size(); i++) {
             Inimigo inimigo = inimigos.get(i);
             Rectangle formaInimigo = inimigo.getRectangle();
+            //if (formaInimigo.intersects(tiroSuper.getRectangle()))
+            
             if (formaInimigo.intersects(formaPersonagem)) {
+                personagem.setVidas();
+                inimigo.setEhVisivel(false);
+                if (personagem.getVidas() == 0){
                 this.personagem.setEhVisivel(false);
                 inimigo.setEhVisivel(false);
                 emJogo = false;
+                }
+
             }
-            ArrayList<Tiro> tiros = this.personagem.getTiros();
+            List<Tiro> tiros = this.personagem.getTiros();
             for (int j = 0; j < tiros.size(); j++) {
                 Tiro tiro = tiros.get(j);
                 Rectangle formaTiro = tiro.getRectangle();
                 if (formaInimigo.intersects(formaTiro)) {
-                    int pontuacaoAtual = this.personagem.getPontuacao();
-                    this.personagem.setPontuacao(pontuacaoAtual + PONTOS_POR_INIMIGO);
                     inimigo.setEhVisivel(false);
                     tiro.setEhVisivel(false);
+                    personagem.setPontuacao(PONTOS_POR_INIMIGO);
+                    //TODO: A conexão com o banco de dados está com problema
+                    //HibernateUtil.GetSession().persist(personagem);
+                    // HibernateUtil.GetSession().persist(inimigo);
+                    // HibernateUtil.GetSession().persist(tiros);
                 }
             }
         }

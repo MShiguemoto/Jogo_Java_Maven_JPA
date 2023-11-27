@@ -1,17 +1,28 @@
 package ifpr.paranavai.jogo.modelo;
 
-public class TiroSuper extends ElementoGrafico{
+
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
+import javax.swing.ImageIcon;
+
+@Entity
+@DiscriminatorValue("S")
+public class TiroSuper extends Tiro{
+
+    public TiroSuper(int posicaoPersonagemEmX, int posicaoPersonagemEmY){
+        super(posicaoPersonagemEmX, posicaoPersonagemEmY);
+        this.carregar();
+    }
 
     @Override
     public void carregar() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'carregar'");
+        ImageIcon carregando = new ImageIcon(getClass().getResource("/supertiro.png"));
+        super.setImagem(carregando.getImage());
     }
 
     @Override
     public void atualizar() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'atualizar'");
+        super.setPosicaoEmX(super.getPosicaoEmX() + VELOCIDADE + 10);
     }
     
 }

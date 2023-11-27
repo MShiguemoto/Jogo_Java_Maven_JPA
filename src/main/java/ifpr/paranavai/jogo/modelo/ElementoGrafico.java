@@ -1,14 +1,40 @@
 package ifpr.paranavai.jogo.modelo;
 
+import java.awt.Dimension;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.Rectangle;
+import java.io.Serializable;
 
-public abstract class ElementoGrafico {
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Transient;
+
+//@Entity
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+public abstract class ElementoGrafico implements Serializable{
+    
+    // @Id
+    // @GeneratedValue(strategy =  GenerationType.IDENTITY)
+    // private int id;
+
+    @Column(name = "X")
     private int posicaoEmX;
+    @Column(name = "Y")
     private int posicaoEmY;
+
+    @Transient
     private Image imagem;
+    @Transient
     private int larguraImagem;
+    @Transient
     private int alturaImagem;
+    @Transient
     private boolean ehVisivel = true;
 
     public abstract void carregar();
@@ -16,7 +42,8 @@ public abstract class ElementoGrafico {
     public abstract void atualizar();
 
     public Rectangle getRectangle() {
-        return new Rectangle(posicaoEmX, posicaoEmY, larguraImagem, alturaImagem);
+        return new Rectangle(new Point(posicaoEmX, posicaoEmY), new Dimension(larguraImagem, larguraImagem));
+
     }
 
     public int getPosicaoEmX() {
